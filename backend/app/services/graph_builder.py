@@ -22,6 +22,7 @@ from ..utils.ontology import (
     normalize_ontology_source_targets,
 )
 from ..utils.zep import (
+    ZEP_INGESTION_WAIT_TIMEOUT_SECONDS,
     call_zep_read_with_retry,
     get_zep_client,
     is_retryable_zep_error,
@@ -635,7 +636,7 @@ class GraphBuilderService:
     ) -> List[str]:
         """Wait for a Batch API terminal state and validate every item."""
 
-        timeout = timeout or Config.ZEP_INGESTION_TIMEOUT_SECONDS
+        timeout = timeout or ZEP_INGESTION_WAIT_TIMEOUT_SECONDS
         start_time = time.time()
         terminal_states = {"succeeded", "partial", "failed", "invalid", "canceled"}
 
@@ -720,7 +721,7 @@ class GraphBuilderService:
         self,
         episode_uuids: List[str],
         progress_callback: Optional[Callable] = None,
-        timeout: int = 600
+        timeout: int = ZEP_INGESTION_WAIT_TIMEOUT_SECONDS
     ):
         """等待所有 episode 处理完成（通过查询每个 episode 的 processed 状态）"""
         if not episode_uuids:

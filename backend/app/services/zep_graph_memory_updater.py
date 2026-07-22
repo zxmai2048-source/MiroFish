@@ -13,7 +13,11 @@ from queue import Queue, Empty
 from ..config import Config
 from ..utils.logger import get_logger
 from ..utils.locale import get_locale, set_locale
-from ..utils.zep import call_zep_read_with_retry, get_zep_client
+from ..utils.zep import (
+    ZEP_INGESTION_WAIT_TIMEOUT_SECONDS,
+    call_zep_read_with_retry,
+    get_zep_client,
+)
 
 logger = get_logger('mirofish.zep_graph_memory_updater')
 
@@ -308,7 +312,7 @@ class ZepGraphMemoryUpdater:
     
     def stop(self):
         """Drain the worker, flush tail events, and wait for Cloud ingestion."""
-        deadline = time.time() + Config.ZEP_INGESTION_TIMEOUT_SECONDS
+        deadline = time.time() + ZEP_INGESTION_WAIT_TIMEOUT_SECONDS
         # Serialize the accepting->closed transition with add_activity's
         # check+enqueue operation. This closes the small race where a producer
         # could enqueue after both the worker and final flush had exited.
@@ -598,7 +602,7 @@ class ZepGraphMemoryUpdater:
             return
 
         if deadline is None:
-            deadline = time.time() + Config.ZEP_INGESTION_TIMEOUT_SECONDS
+            deadline = time.time() + ZEP_INGESTION_WAIT_TIMEOUT_SECONDS
         while pending:
             if time.time() >= deadline:
                 raise TimeoutError(

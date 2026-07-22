@@ -1,10 +1,10 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from zep_cloud.core.api_error import ApiError as ZepApiError
 
 from app.utils import zep
-from app import config
 
 
 def test_permanent_zep_errors_fail_without_retry():
@@ -79,24 +79,34 @@ def test_zep_client_rejects_self_hosted_endpoint_override(monkeypatch):
         zep.get_zep_client("test-key")
 
 
-def test_malformed_timeout_config_is_reported_without_import_failure():
-    value, error = config._parse_number(
-        "ZEP_REQUEST_TIMEOUT_SECONDS",
-        "not-a-number",
-        default=30.0,
-        cast=float,
-    )
+def test_zep_client_uses_internal_timeout_and_ignores_env_overrides(monkeypatch):
+    created = []
 
-    assert value == 30.0
-    assert "must be a number" in error
+    def fake_zep(**kwargs):
+        created.append(kwargs)
+        return SimpleNamespace(kwargs=kwargs)
+
+    monkeypatch.delenv("ZEP_API_URL", raising=False)
+    monkeypatch.setenv("ZEP_REQUEST_TIMEOUT_SECONDS", "1")
+    monkeypatch.setenv("ZEP_INGESTION_TIMEOUT_SECONDS", "1")
+    monkeypatch.setattr(zep, "Zep", fake_zep)
+    zep.clear_zep_client_cache()
+
+    zep.get_zep_client("test-key")
+
+    assert created == [{
+        "api_key": "test-key",
+        "base_url": zep.ZEP_CLOUD_BASE_URL,
+        "timeout": zep.ZEP_HTTP_REQUEST_TIMEOUT_SECONDS,
+    }]
+    assert zep.ZEP_HTTP_REQUEST_TIMEOUT_SECONDS == 60.0
+    assert zep.ZEP_INGESTION_WAIT_TIMEOUT_SECONDS == 600
+    zep.clear_zep_client_cache()
 
 
-def test_zep_client_rejects_a_recorded_timeout_parse_error(monkeypatch):
-    monkeypatch.setattr(
-        zep.Config,
-        "_ZEP_CONFIG_PARSE_ERRORS",
-        ("ZEP_REQUEST_TIMEOUT_SECONDS must be a number",),
-    )
+def test_zep_timeout_policy_is_not_exposed_in_env_example():
+    env_example = Path(__file__).resolve().parents[2] / ".env.example"
+    contents = env_example.read_text(encoding="utf-8")
 
-    with pytest.raises(ValueError, match="must be a number"):
-        zep.get_zep_client("test-key")
+    assert "ZEP_REQUEST_TIMEOUT_SECONDS" not in contents
+    assert "ZEP_INGESTION_TIMEOUT_SECONDS" not in contents

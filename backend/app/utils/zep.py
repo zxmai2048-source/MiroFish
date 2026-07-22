@@ -19,6 +19,13 @@ logger = get_logger("mirofish.zep")
 T = TypeVar("T")
 
 ZEP_CLOUD_BASE_URL = "https://api.getzep.com/api/v2"
+# Keep request behavior aligned with the zep-cloud 3.25.0 SDK default that
+# MiroFish used before introducing the shared client. This is an internal
+# integration policy, not a deployment setting users need to tune.
+ZEP_HTTP_REQUEST_TIMEOUT_SECONDS = 60.0
+# Zep ingestion is asynchronous and may take several minutes. Preserve the
+# original GraphBuilder deadline while keeping it separate from HTTP timeout.
+ZEP_INGESTION_WAIT_TIMEOUT_SECONDS = 600
 MAX_ZEP_SEARCH_QUERY_CHARS = 400
 MAX_ZEP_SEARCH_RESULTS = 50
 
@@ -58,9 +65,6 @@ def _cached_zep_client(api_key: str, timeout: float) -> Zep:
 def get_zep_client(api_key: str | None = None, timeout: float | None = None) -> Zep:
     """Return a process-shared, explicitly configured Zep Cloud client."""
 
-    if Config._ZEP_CONFIG_PARSE_ERRORS:
-        raise ValueError("; ".join(Config._ZEP_CONFIG_PARSE_ERRORS))
-
     # zep-cloud gives ZEP_API_URL precedence even when base_url is explicit.
     # Reject it so this Cloud-only integration cannot silently target a
     # self-hosted or compatibility endpoint.
@@ -72,7 +76,7 @@ def get_zep_client(api_key: str | None = None, timeout: float | None = None) -> 
         raise ValueError("ZEP_API_KEY 未配置")
 
     request_timeout = float(
-        timeout if timeout is not None else Config.ZEP_REQUEST_TIMEOUT_SECONDS
+        timeout if timeout is not None else ZEP_HTTP_REQUEST_TIMEOUT_SECONDS
     )
     if request_timeout <= 0:
         raise ValueError("Zep request timeout must be greater than 0")

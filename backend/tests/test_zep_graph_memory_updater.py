@@ -187,7 +187,7 @@ def test_pending_episode_wait_has_a_deadline(monkeypatch):
         processed=False
     )
     timestamps = iter([0.0, 2.0])
-    monkeypatch.setattr(updater_module.Config, "ZEP_INGESTION_TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(updater_module, "ZEP_INGESTION_WAIT_TIMEOUT_SECONDS", 1)
     monkeypatch.setattr(updater_module.time, "time", lambda: next(timestamps))
     monkeypatch.setattr(updater_module.time, "sleep", lambda _seconds: None)
 
