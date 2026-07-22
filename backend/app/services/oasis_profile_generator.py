@@ -81,7 +81,7 @@ class OasisAgentProfile:
     name: str
     bio: str
     persona: str
-    
+
     # 可选字段 - Reddit风格
     karma: int = 1000
     
@@ -115,7 +115,7 @@ class OasisAgentProfile:
         self.gender = _coerce_to_str(self.gender) or None
         self.mbti = _coerce_to_str(self.mbti) or None
         self.interested_topics = _coerce_to_str_list(self.interested_topics)
-    
+
     def to_reddit_format(self) -> Dict[str, Any]:
         """转换为Reddit平台格式"""
         profile = {
